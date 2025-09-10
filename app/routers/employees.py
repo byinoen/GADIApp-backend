@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db import get_session
 from app.models.employee import Employee, EmployeeCreate, EmployeeRead, EmployeeUpdate
+from app.security.deps import require_roles
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
@@ -12,7 +13,8 @@ router = APIRouter(prefix="/employees", tags=["employees"])
 @router.post("/", response_model=EmployeeRead, status_code=201)
 def create_employee(
     employee: EmployeeCreate,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user = Depends(require_roles("Encargado", "Administrador"))
 ):
     db_employee = Employee.model_validate(employee)
     session.add(db_employee)
@@ -43,7 +45,8 @@ def get_employee(employee_id: int, session: Session = Depends(get_session)):
 def update_employee(
     employee_id: int,
     employee_update: EmployeeUpdate,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user = Depends(require_roles("Encargado", "Administrador"))
 ):
     employee = session.get(Employee, employee_id)
     if not employee:
@@ -64,7 +67,11 @@ def update_employee(
 
 
 @router.delete("/{employee_id}")
-def delete_employee(employee_id: int, session: Session = Depends(get_session)):
+def delete_employee(
+    employee_id: int,
+    session: Session = Depends(get_session),
+    current_user = Depends(require_roles("Encargado", "Administrador"))
+):
     employee = session.get(Employee, employee_id)
     if not employee:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")

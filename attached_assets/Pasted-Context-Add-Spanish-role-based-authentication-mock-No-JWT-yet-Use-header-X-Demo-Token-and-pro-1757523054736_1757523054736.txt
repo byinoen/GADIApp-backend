@@ -1,0 +1,51 @@
+Context:
+Add Spanish role-based authentication (mock). No JWT yet. Use header "X-Demo-Token" and protect write endpoints.
+
+Change scope:
+Create/Edit ONLY:
+- app/models/user.py
+- app/routers/auth.py
+- app/security/deps.py
+- app/routers/employees.py (to protect create/update/delete)
+- app/main.py (include auth router)
+
+Task:
+1) app/models/user.py
+   - Pydantic:
+     class UserLogin(BaseModel): email: EmailStr; password: str
+     class UserPublic(BaseModel): id: int; email: EmailStr; role: Literal["Trabajador","Encargado","Administrador"]
+
+2) app/routers/auth.py
+   - POST /auth/login:
+     Accepted credentials:
+       trabajador@example.com / 1234 -> role "Trabajador"
+       encargado@example.com / 1234 -> role "Encargado"
+       admin@example.com / 1234     -> role "Administrador"
+     Return {"token":"demo","user":{id,email,role}}.
+     On invalid: 401 detail "Credenciales inválidas".
+
+3) app/security/deps.py
+   - get_current_user(x_demo_token: str = Header(None)) -> if token != "demo": raise 401 "No autenticado".
+   - Maintain a simple in-memory "current user" map for the demo, or accept user role via a header "X-Demo-Role" fallback for testing.
+   - require_roles(*roles): Dependency that checks user.role; raise 403 "Permiso denegado" otherwise.
+
+4) app/routers/employees.py
+   - Protect POST, PATCH, DELETE with Depends(require_roles("Encargado","Administrador")).
+   - GET endpoints remain public (or use authenticated-only if you prefer).
+
+5) app/main.py
+   - include_router(auth.router)
+
+Acceptance criteria:
+- POST /auth/login works for the 3 mock users; returns token+user.
+- Sending header X-Demo-Token: demo with role=Trabajador:
+  * GET /employees ok
+  * POST/PATCH/DELETE /employees -> 403 "Permiso denegado"
+- With Encargado/Admin -> write endpoints allowed.
+
+Quick tests:
+curl -s -X POST http://127.0.0.1:8000/auth/login -H "Content-Type: application/json" -d '{"email":"admin@example.com","password":"1234"}'
+# Then, use X-Demo-Token for protected routes:
+curl -s -X POST http://127.0.0.1:8000/employees -H "Content-Type: application/json" -H "X-Demo-Token: demo" -d '{"nombre":"Luis","email":"luis@example.com","role":"Trabajador"}'
+# (Optional) If you implement X-Demo-Role helper for testing:
+# -H "X-Demo-Role: Administrador"
