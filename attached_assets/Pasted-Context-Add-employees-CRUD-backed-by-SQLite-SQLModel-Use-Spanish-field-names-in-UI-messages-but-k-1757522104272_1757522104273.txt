@@ -1,0 +1,55 @@
+Context:
+Add employees CRUD backed by SQLite/SQLModel. Use Spanish field names in UI messages, but keep code identifiers clear.
+
+Change scope:
+Create/Edit ONLY:
+- app/models/employee.py
+- app/routers/employees.py
+- app/main.py (include router)
+
+Task:
+1) app/models/employee.py
+   - SQLModel tables/models:
+     class EmployeeBase(SQLModel):
+       nombre: str
+       email: EmailStr
+       role: Literal["Trabajador","Encargado","Administrador"]
+     class Employee(EmployeeBase, table=True):
+       id: Optional[int] = Field(default=None, primary_key=True)
+       __table_args__ = (UniqueConstraint("email"),)
+     class EmployeeCreate(EmployeeBase): pass
+     class EmployeeRead(EmployeeBase):
+       id: int
+     class EmployeeUpdate(SQLModel):
+       nombre: Optional[str] = None
+       email: Optional[EmailStr] = None
+       role: Optional[Literal["Trabajador","Encargado","Administrador"]] = None
+
+2) app/routers/employees.py
+   - router = APIRouter(prefix="/employees", tags=["employees"])
+   - Endpoints:
+     POST / -> create employee
+       * 409 if email exists → detail: "El correo ya está registrado"
+     GET / -> list all
+     GET /{id} -> get by id
+       * 404 if not found → "Empleado no encontrado"
+     PATCH /{id} -> partial update
+       * 404 if not found
+       * 409 if email duplicates
+     DELETE /{id} -> delete
+       * 404 if not found
+   - Use dependency get_session() from app.db.
+
+3) app/main.py
+   - include_router(employees.router)
+
+Acceptance criteria:
+- CRUD works against SQLite with Spanish 404/409 messages.
+- /employees returns [] initially.
+
+Quick tests (run while server is up):
+curl -s http://127.0.0.1:8000/employees
+curl -s -X POST http://127.0.0.1:8000/employees -H "Content-Type: application/json" -d '{"nombre":"Ana","email":"ana@example.com","role":"Trabajador"}'
+curl -s http://127.0.0.1:8000/employees
+curl -s -X PATCH http://127.0.0.1:8000/employees/1 -H "Content-Type: application/json" -d '{"role":"Encargado"}'
+curl -s -X DELETE http://127.0.0.1:8000/employees/1

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health
+from app.routers import health, employees
 from app.db import init_db
 
 app = FastAPI()
@@ -21,3 +21,4 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router)
+app.include_router(employees.router)
