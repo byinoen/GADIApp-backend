@@ -2,7 +2,11 @@ from sqlmodel import SQLModel, create_engine, Session
 from app.config import get_settings
 
 settings = get_settings()
-engine = create_engine(settings.DATABASE_URL, echo=False)
+engine = create_engine(
+    settings.DATABASE_URL, 
+    echo=False,
+    connect_args={"check_same_thread": False}
+)
 
 
 def get_session():
