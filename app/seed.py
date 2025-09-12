@@ -2,13 +2,14 @@ from datetime import date, timedelta
 from sqlmodel import Session, select
 from app.models.employee import Employee, RoleEnum
 from app.models.schedule import Schedule, TurnoEnum
+from app.models.task import Task
 
 
 def seed_all(session: Session):
     """Seeds the database with realistic demo data for development/testing"""
     
     # Clear existing data for idempotent seeding
-    # Delete schedules first to avoid FK constraint issues
+    # Delete in order to avoid FK constraint issues: schedules -> employees -> tasks
     existing_schedules = session.exec(select(Schedule)).all()
     for schedule in existing_schedules:
         session.delete(schedule)
@@ -16,6 +17,10 @@ def seed_all(session: Session):
     existing_employees = session.exec(select(Employee)).all()
     for employee in existing_employees:
         session.delete(employee)
+    
+    existing_tasks = session.exec(select(Task)).all()
+    for task in existing_tasks:
+        session.delete(task)
     
     session.commit()
     
@@ -40,14 +45,26 @@ def seed_all(session: Session):
     for employee in created_employees:
         session.refresh(employee)
     
-    # Tasks (tareas) for future implementation - storing as list for now
-    tareas = [
-        "Riego viñedo",
-        "Poda", 
-        "Control de plagas",
-        "Cosecha",
-        "Mantenimiento tractor"
+    # Create tasks (tareas) using the Task model
+    tareas_data = [
+        {"nombre": "Riego viñedo", "descripcion": "Riego de las plantas del viñedo"},
+        {"nombre": "Poda", "descripcion": "Poda de ramas y hojas de las vides"},
+        {"nombre": "Control de plagas", "descripcion": "Inspección y tratamiento contra plagas"},
+        {"nombre": "Cosecha", "descripcion": "Recolección de uvas maduras"},
+        {"nombre": "Mantenimiento tractor", "descripcion": "Revisión y mantenimiento de maquinaria"}
     ]
+    
+    created_tasks = []
+    for task_data in tareas_data:
+        task = Task(**task_data)
+        session.add(task)
+        created_tasks.append(task)
+    
+    session.commit()
+    
+    # Refresh tasks to get their IDs
+    for task in created_tasks:
+        session.refresh(task)
     
     # Create schedules for next 2 weeks with varied shifts
     today = date.today()
@@ -84,5 +101,6 @@ def seed_all(session: Session):
     
     return {
         "employees": len(created_employees),
-        "schedules": len(created_schedules)
+        "schedules": len(created_schedules),
+        "tasks": len(created_tasks)
     }

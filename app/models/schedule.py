@@ -14,6 +14,7 @@ class ScheduleBase(SQLModel):
     fecha: date
     turno: TurnoEnum
     empleado_id: int = Field(foreign_key="employee.id")
+    task_id: Optional[int] = Field(default=None, foreign_key="task.id")
 
 
 class Schedule(ScheduleBase, table=True):
@@ -32,3 +33,4 @@ class ScheduleUpdate(SQLModel):
     fecha: Optional[date] = None
     turno: Optional[TurnoEnum] = None
     empleado_id: Optional[int] = None
+    task_id: Optional[int] = None
