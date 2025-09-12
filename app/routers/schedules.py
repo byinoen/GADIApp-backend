@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db import get_session
 from app.models.schedule import Schedule, ScheduleCreate, ScheduleRead, ScheduleUpdate
-from app.security.deps import require_roles
+from app.security.deps import get_current_user, require_roles
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
 
@@ -31,6 +31,7 @@ def create_schedule(
 @router.get("/", response_model=List[ScheduleRead])
 def list_schedules(
     session: Session = Depends(get_session),
+    current_user = Depends(get_current_user),
     empleado_id: Optional[int] = Query(None),
     fecha_from: Optional[date] = Query(None),
     fecha_to: Optional[date] = Query(None)
@@ -51,7 +52,11 @@ def list_schedules(
 
 
 @router.get("/{schedule_id}", response_model=ScheduleRead)
-def get_schedule(schedule_id: int, session: Session = Depends(get_session)):
+def get_schedule(
+    schedule_id: int, 
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
     schedule = session.get(Schedule, schedule_id)
     if not schedule:
         raise HTTPException(status_code=404, detail="Horario no encontrado")

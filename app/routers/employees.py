@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db import get_session
 from app.models.employee import Employee, EmployeeCreate, EmployeeRead, EmployeeUpdate
-from app.security.deps import require_roles
+from app.security.deps import get_current_user, require_roles
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
@@ -28,13 +28,20 @@ def create_employee(
 
 
 @router.get("/", response_model=List[EmployeeRead])
-def list_employees(session: Session = Depends(get_session)):
+def list_employees(
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
     employees = session.exec(select(Employee)).all()
     return employees
 
 
 @router.get("/{employee_id}", response_model=EmployeeRead)
-def get_employee(employee_id: int, session: Session = Depends(get_session)):
+def get_employee(
+    employee_id: int, 
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
     employee = session.get(Employee, employee_id)
     if not employee:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")

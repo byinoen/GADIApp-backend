@@ -5,7 +5,7 @@ from app.db import get_session
 from app.models.user import User, UserPublic
 from app.security.jwt import decode_token
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
@@ -13,6 +13,14 @@ def get_current_user(
     session: Session = Depends(get_session)
 ) -> UserPublic:
     """Get current user from JWT token"""
+    # Check if credentials are provided
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No autenticado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     try:
         # Decode the JWT token
         payload = decode_token(credentials.credentials)
@@ -21,7 +29,7 @@ def get_current_user(
         if user_id_str is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token inválido",
+                detail="No autenticado",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
@@ -30,7 +38,7 @@ def get_current_user(
         except (ValueError, TypeError):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token inválido",
+                detail="No autenticado",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
@@ -39,7 +47,7 @@ def get_current_user(
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Usuario no encontrado",
+                detail="No autenticado",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
@@ -56,7 +64,7 @@ def get_current_user(
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido",
+            detail="No autenticado",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
