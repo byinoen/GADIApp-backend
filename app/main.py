@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health, employees, auth, schedules
+from app.routers import health, employees, auth, schedules, admin_seed
 from app.db import init_db
 
 app = FastAPI()
@@ -24,3 +24,4 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(employees.router)
 app.include_router(schedules.router)
+app.include_router(admin_seed.router)
