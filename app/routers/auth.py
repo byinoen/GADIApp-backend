@@ -3,7 +3,8 @@ from sqlmodel import Session, select
 from passlib.context import CryptContext
 
 from app.db import get_session
-from app.models.user import User, UserLogin, UserPublic, UserRegister
+from app.models.user import User, UserLogin, UserPublic, UserRegister, UserBootstrap
+from app.models.employee import RoleEnum
 from app.security.jwt import create_access_token
 from app.security.deps import get_current_user, require_roles
 from app.config import get_settings
@@ -104,3 +105,41 @@ def login(user_login: UserLogin, session: Session = Depends(get_session)):
 def get_current_user_info(current_user: UserPublic = Depends(get_current_user)):
     """Get current user information"""
     return current_user
+
+
+@router.post("/bootstrap", response_model=UserPublic)
+def bootstrap_admin(
+    bootstrap_data: UserBootstrap,
+    session: Session = Depends(get_session)
+):
+    """Bootstrap first admin user (only works when no users exist)"""
+    # Check if any users exist
+    users_count = len(session.exec(select(User)).all())
+    
+    if users_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Bootstrap no disponible"
+        )
+    
+    # Create first admin user with hashed password
+    hashed_password = get_password_hash(bootstrap_data.password)
+    admin_user = User(
+        email=bootstrap_data.email,
+        nombre=bootstrap_data.nombre,
+        role=RoleEnum.ADMINISTRADOR,
+        password_hash=hashed_password,
+        employee_id=None  # Bootstrap admin not linked to employee
+    )
+    
+    session.add(admin_user)
+    session.commit()
+    session.refresh(admin_user)
+    
+    return UserPublic(
+        id=admin_user.id or 0,
+        email=admin_user.email,
+        nombre=admin_user.nombre,
+        role=admin_user.role,
+        employee_id=admin_user.employee_id
+    )

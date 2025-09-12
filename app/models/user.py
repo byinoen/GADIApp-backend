@@ -43,3 +43,9 @@ class UserRegister(BaseModel):
     role: RoleEnum
     password: str
     employee_id: Optional[int] = None
+
+
+class UserBootstrap(BaseModel):
+    email: EmailStr
+    nombre: str
+    password: str
