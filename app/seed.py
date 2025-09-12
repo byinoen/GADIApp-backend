@@ -13,15 +13,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def seed_all(session: Session):
     """Seeds the database with realistic demo data for development/testing"""
     
-    # Clear existing data for idempotent seeding
-    # Delete in order to avoid FK constraint issues: schedules -> users -> employees -> tasks
+    # Clear existing data for idempotent seeding (except users)
+    # Delete in order to avoid FK constraint issues: schedules -> employees -> tasks
     existing_schedules = session.exec(select(Schedule)).all()
     for schedule in existing_schedules:
         session.delete(schedule)
-    
-    existing_users = session.exec(select(User)).all()
-    for user in existing_users:
-        session.delete(user)
     
     existing_employees = session.exec(select(Employee)).all()
     for employee in existing_employees:
@@ -75,7 +71,7 @@ def seed_all(session: Session):
     for task in created_tasks:
         session.refresh(task)
     
-    # Create users mapped to some employees
+    # Create users mapped to some employees (idempotent - skip if email exists)
     users_data = [
         {
             "email": "ana.garcia@example.com",
@@ -109,7 +105,16 @@ def seed_all(session: Session):
     
     created_users = []
     for user_data in users_data:
-        # Hash the password
+        # Check if user already exists (idempotent)
+        existing_user = session.exec(
+            select(User).where(User.email == user_data["email"])
+        ).first()
+        
+        if existing_user:
+            created_users.append(existing_user)
+            continue
+            
+        # Hash the password and create new user
         password_hash = pwd_context.hash(user_data["password"])
         
         user = User(
