@@ -1,3 +1,33 @@
+Context:
+We need DEV-only helpers to fix login without wiping the DB: list users and reset a user password.
+These endpoints must be enabled only when APP_ENV != "prod".
+
+Change scope:
+Create/Edit ONLY:
+- app/config.py
+- app/routers/dev_tools.py
+- app/main.py
+- requirements.txt (ensure passlib[bcrypt] exists)
+
+Task:
+1) requirements.txt:
+   - Ensure: passlib[bcrypt]==1.7.4 (or compatible)
+
+2) app/config.py (if missing, create):
+------------------------------------------------
+from pydantic_settings import BaseSettings
+from functools import lru_cache
+
+class Settings(BaseSettings):
+    APP_ENV: str = "local"  # 'local' enables DEV endpoints; set 'prod' to disable
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+------------------------------------------------
+
+3) app/routers/dev_tools.py (create):
+------------------------------------------------
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from passlib.context import CryptContext
@@ -38,3 +68,18 @@ def reset_password(payload: dict, _: bool = Depends(ensure_dev), session: Sessio
     session.add(user)
     session.commit()
     return {"ok": True}
+------------------------------------------------
+
+4) app/main.py:
+   - include the dev router:
+     from app.routers import dev_tools
+     app.include_router(dev_tools.router)
+
+5) Ensure APP_ENV is NOT 'prod' in your environment (default is 'local').
+   If needed, set APP_ENV=local in your Replit Secrets.
+   
+Acceptance:
+- GET /dev/users returns the list of users when APP_ENV != 'prod'.
+- POST /dev/reset-password with {email, new_password} updates hash.
+- After reset, POST /auth/login with the new password returns access_token.
+- When APP_ENV='prod', /dev/* returns 403.
