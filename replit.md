@@ -2,16 +2,16 @@
 
 GADIApp-backend is a FastAPI web application that serves as the backend for the GADI system. The project follows a modular structure with separate directories for models, routers, and database configurations. Currently, it implements a basic health check endpoint and includes CORS middleware for cross-origin requests.
 
-## Recent Changes (September 10, 2025)
-- Created initial FastAPI backend project structure with SQLite database
-- Implemented complete employee CRUD operations with Spanish error messages
-- Added Spanish role-based authentication system with three mock users:
-  - trabajador@example.com (Trabajador role) - read-only access
-  - encargado@example.com (Encargado role) - full access to employee operations
-  - admin@example.com (Administrador role) - full access to employee operations
-- Protected write endpoints (POST/PATCH/DELETE) with role-based authorization
-- Configured CORS middleware and health check endpoint
-- Set up development workflow running on port 8000
+## Recent Changes (September 12, 2025)
+- **MAJOR**: Replaced mock authentication with complete JWT authentication system
+- Implemented real user registration, login, and profile endpoints with password hashing via bcrypt
+- Updated User model with password_hash, employee_id foreign key, and proper database persistence
+- Created JWT token utilities (create/validate) with configurable expiration and secret key management
+- Migrated all protected endpoints from mock headers to Bearer token authentication
+- Maintained Spanish error messages throughout JWT implementation
+- Secured admin seeding endpoints with proper authentication controls
+- Implemented production-ready configuration with mandatory environment variables
+- Added user-to-employee mapping via foreign keys for better data relationships
 
 # User Preferences
 
@@ -45,12 +45,15 @@ Preferred communication style: Simple, everyday language.
 - **Spanish Error Messages**: Consistent Spanish language error responses throughout the API
 
 ## Security Architecture
-- **Mock Authentication**: Demo authentication system using X-Demo-Token header
+- **JWT Authentication**: Production-ready JWT token system using HS256 algorithm
+- **Password Security**: bcrypt hashing for user passwords with secure verification
 - **Role-Based Authorization**: Three roles with different access levels:
   - **Trabajador**: Read-only access to employee data
-  - **Encargado**: Full CRUD access to employee operations
-  - **Administrador**: Full CRUD access to employee operations
-- **Protected Endpoints**: Write operations (POST/PATCH/DELETE) require Encargado or Administrador roles
+  - **Encargado**: Full CRUD access to employee operations  
+  - **Administrador**: Full CRUD access to employee operations + user management
+- **Bearer Token Authentication**: All protected endpoints use Authorization: Bearer tokens
+- **Environment-Based Security**: Production defaults with mandatory SECRET_KEY configuration
+- **Secure Seeding**: Admin-protected database seeding with local development bypass
 - **Spanish Error Handling**: Consistent Spanish language security error messages
 
 # External Dependencies
@@ -71,17 +74,25 @@ Preferred communication style: Simple, everyday language.
 
 # API Endpoints
 
-## Authentication
-- `POST /auth/login` - Login with mock credentials (password: "1234" for all users)
+## Authentication Endpoints
+- `POST /auth/register` - Register new user (Admin only)
+- `POST /auth/login` - Login with email/password, returns JWT token
+- `GET /auth/me` - Get current user profile (requires valid JWT)
 
 ## Employees
-- `GET /employees/` - List all employees (public)
+- `GET /employees/` - List all employees (requires valid JWT)
 - `POST /employees/` - Create employee (requires Encargado/Administrador)
-- `GET /employees/{id}` - Get employee by ID (public)
+- `GET /employees/{id}` - Get employee by ID (requires valid JWT)
 - `PATCH /employees/{id}` - Update employee (requires Encargado/Administrador)
 - `DELETE /employees/{id}` - Delete employee (requires Encargado/Administrador)
 
-## Mock Users
-- **trabajador@example.com** / **1234** (Trabajador role)
-- **encargado@example.com** / **1234** (Encargado role) 
-- **admin@example.com** / **1234** (Administrador role)
+## Admin/Seeding Endpoints
+- `POST /admin/seed` - Database seeding (local development only)
+- `POST /admin/seed-admin` - Admin-protected seeding (requires Administrador JWT)
+- `POST /admin/bootstrap` - Production bootstrap (requires bootstrap secret)
+
+## Real Users (seeded)
+- **ana.garcia@example.com** / **1234** (Encargado role, mapped to employee)
+- **luis.martinez@example.com** / **1234** (Trabajador role, mapped to employee)
+- **marta.ruiz@example.com** / **1234** (Administrador role, mapped to employee)
+- **admin@gadi.com** / **admin123** (Administrador role, system admin)
