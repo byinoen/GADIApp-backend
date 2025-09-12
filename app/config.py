@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    APP_ENV: str = "production"  # Default to production for security
+    APP_ENV: str = "local"
     DATABASE_URL: str = "sqlite:///./gadi.db"
     SECRET_KEY: str = ""  # Must be set via GADI_SECRET_KEY environment variable
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
