@@ -1,0 +1,49 @@
+Context:
+We need to create the first admin user when the users table is empty. Add a bootstrap endpoint that only works if there are zero users. Use bcrypt hashing and JWT login already in place.
+
+Change scope (edit/create ONLY):
+- app/routers/auth.py
+- app/models/user.py (import only)
+- app/db.py (import get_session)
+- requirements.txt (ensure passlib[bcrypt])
+
+Task:
+1) requirements.txt: ensure passlib[bcrypt] is present.
+2) In app/routers/auth.py add:
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from passlib.context import CryptContext
+from app.db import get_session
+from app.models.user import User
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+@router.post("/bootstrap")
+def bootstrap_first_admin(payload: dict, session: Session = Depends(get_session)):
+    # Works ONLY when there are zero users
+    total = session.exec(select(User)).count()
+    if total and total > 0:
+        raise HTTPException(status_code=409, detail="Bootstrap no disponible")
+
+    email = payload.get("email")
+    nombre = payload.get("nombre")
+    password = payload.get("password")
+    if not email or not nombre or not password:
+        raise HTTPException(status_code=400, detail="email, nombre y password son obligatorios")
+
+    hashed = pwd_context.hash(password)
+    user = User(email=email, nombre=nombre, role="Administrador", password_hash=hashed, employee_id=None)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return {"ok": True, "user": {"id": user.id, "email": user.email, "nombre": user.nombre, "role": user.role}}
+
+# (Keep your existing /auth/login and /auth/me endpoints unchanged.)
+3) Ensure the auth router is included in app/main.py if not already.
+
+Acceptance:
+- POST /auth/bootstrap works ONLY when users table is empty and returns ok + the created admin.
+- Subsequent calls return 409.
+- After bootstrap, POST /auth/login with that email/password returns access_token (JWT).
