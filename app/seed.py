@@ -1,18 +1,27 @@
 from datetime import date, timedelta
 from sqlmodel import Session, select
+from passlib.context import CryptContext
 from app.models.employee import Employee, RoleEnum
 from app.models.schedule import Schedule, TurnoEnum
 from app.models.task import Task
+from app.models.user import User
+
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def seed_all(session: Session):
     """Seeds the database with realistic demo data for development/testing"""
     
     # Clear existing data for idempotent seeding
-    # Delete in order to avoid FK constraint issues: schedules -> employees -> tasks
+    # Delete in order to avoid FK constraint issues: schedules -> users -> employees -> tasks
     existing_schedules = session.exec(select(Schedule)).all()
     for schedule in existing_schedules:
         session.delete(schedule)
+    
+    existing_users = session.exec(select(User)).all()
+    for user in existing_users:
+        session.delete(user)
     
     existing_employees = session.exec(select(Employee)).all()
     for employee in existing_employees:
@@ -47,11 +56,11 @@ def seed_all(session: Session):
     
     # Create tasks (tareas) using the Task model
     tareas_data = [
-        {"nombre": "Riego viñedo", "descripcion": "Riego de las plantas del viñedo"},
-        {"nombre": "Poda", "descripcion": "Poda de ramas y hojas de las vides"},
-        {"nombre": "Control de plagas", "descripcion": "Inspección y tratamiento contra plagas"},
-        {"nombre": "Cosecha", "descripcion": "Recolección de uvas maduras"},
-        {"nombre": "Mantenimiento tractor", "descripcion": "Revisión y mantenimiento de maquinaria"}
+        {"nombre": "Riego viñedo", "descripcion": "Riego de las plantas del viñedo", "activo": True},
+        {"nombre": "Poda", "descripcion": "Poda de ramas y hojas de las vides", "activo": True},
+        {"nombre": "Control de plagas", "descripcion": "Inspección y tratamiento contra plagas", "activo": True},
+        {"nombre": "Cosecha", "descripcion": "Recolección de uvas maduras", "activo": True},
+        {"nombre": "Mantenimiento tractor", "descripcion": "Revisión y mantenimiento de maquinaria", "activo": True}
     ]
     
     created_tasks = []
@@ -65,6 +74,59 @@ def seed_all(session: Session):
     # Refresh tasks to get their IDs
     for task in created_tasks:
         session.refresh(task)
+    
+    # Create users mapped to some employees
+    users_data = [
+        {
+            "email": "ana.garcia@example.com",
+            "nombre": "Ana García", 
+            "role": RoleEnum.ENCARGADO,
+            "password": "1234",
+            "employee_id": created_employees[0].id  # Ana García
+        },
+        {
+            "email": "luis.martinez@example.com",
+            "nombre": "Luis Martínez",
+            "role": RoleEnum.TRABAJADOR, 
+            "password": "1234",
+            "employee_id": created_employees[1].id  # Luis Martínez
+        },
+        {
+            "email": "marta.ruiz@example.com",
+            "nombre": "Marta Ruiz",
+            "role": RoleEnum.ADMINISTRADOR,
+            "password": "1234", 
+            "employee_id": created_employees[4].id  # Marta Ruiz
+        },
+        {
+            "email": "admin@gadi.com",
+            "nombre": "Administrador Sistema",
+            "role": RoleEnum.ADMINISTRADOR,
+            "password": "admin123",
+            "employee_id": None  # System admin without employee link
+        }
+    ]
+    
+    created_users = []
+    for user_data in users_data:
+        # Hash the password
+        password_hash = pwd_context.hash(user_data["password"])
+        
+        user = User(
+            email=user_data["email"],
+            nombre=user_data["nombre"],
+            role=user_data["role"],
+            password_hash=password_hash,
+            employee_id=user_data["employee_id"]
+        )
+        session.add(user)
+        created_users.append(user)
+    
+    session.commit()
+    
+    # Refresh users to get their IDs
+    for user in created_users:
+        session.refresh(user)
     
     # Create schedules for next 2 weeks with varied shifts
     today = date.today()
@@ -102,5 +164,6 @@ def seed_all(session: Session):
     return {
         "employees": len(created_employees),
         "schedules": len(created_schedules),
-        "tasks": len(created_tasks)
+        "tasks": len(created_tasks),
+        "users": len(created_users)
     }

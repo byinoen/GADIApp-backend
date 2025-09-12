@@ -8,11 +8,11 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.post("/seed")
-def seed_database(
-    session: Session = Depends(get_session),
-    current_user = Depends(require_roles("Administrador"))
-):
-    """Seeds the database with realistic demo data for development/testing"""
+def seed_database(session: Session = Depends(get_session)):
+    """Seeds the database with realistic demo data for development/testing
+    
+    Note: This endpoint is open for initial setup. In production, this should be protected.
+    """
     created_counts = seed_all(session)
     
     return {

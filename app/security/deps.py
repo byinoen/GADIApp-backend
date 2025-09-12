@@ -1,48 +1,61 @@
-from typing import List
-from fastapi import Header, HTTPException, Depends
-from app.models.user import UserPublic
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlmodel import Session, select
+from app.db import get_session
+from app.models.user import User, UserPublic
+from app.security.jwt import decode_token
 
-# Mock current user storage for demo
-_current_user_storage = {}
+security = HTTPBearer()
 
 
 def get_current_user(
-    x_demo_token: str = Header(None),
-    x_demo_role: str = Header(None)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    session: Session = Depends(get_session)
 ) -> UserPublic:
-    if x_demo_token != "demo":
-        raise HTTPException(status_code=401, detail="No autenticado")
-    
-    # For testing purposes, allow role override via header
-    if x_demo_role and x_demo_role in ["Trabajador", "Encargado", "Administrador"]:
+    """Get current user from JWT token"""
+    try:
+        # Decode the JWT token
+        payload = decode_token(credentials.credentials)
+        user_id = payload.get("sub")
+        
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token inválido",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Get user from database
+        user = session.get(User, user_id)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Usuario no encontrado",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
         return UserPublic(
-            id=1,
-            email="demo@example.com",
-            role=x_demo_role  # type: ignore
+            id=user.id or 0,  # Handle None case
+            email=user.email,
+            nombre=user.nombre,
+            role=user.role,
+            employee_id=user.employee_id
         )
     
-    # Return stored user or default
-    user = _current_user_storage.get("demo_user")
-    if not user:
-        # Default user for testing
-        user = UserPublic(
-            id=1,
-            email="demo@example.com", 
-            role="Trabajador"
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    return user
-
-
-def set_current_user(user: UserPublic):
-    """Helper to set current user after login"""
-    _current_user_storage["demo_user"] = user
 
 
 def require_roles(*roles: str):
     """Dependency factory to require specific roles"""
     def check_roles(current_user: UserPublic = Depends(get_current_user)):
-        if current_user.role not in roles:
+        if current_user.role.value not in roles:  # Use .value for enum
             raise HTTPException(status_code=403, detail="Permiso denegado")
         return current_user
     return check_roles

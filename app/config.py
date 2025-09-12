@@ -4,6 +4,8 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     APP_ENV: str = "local"
     DATABASE_URL: str = "sqlite:///./gadi.db"
+    SECRET_KEY: str = "gadi-secret-key-change-in-production-123456789"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     class Config:
         env_prefix = "GADI_"
