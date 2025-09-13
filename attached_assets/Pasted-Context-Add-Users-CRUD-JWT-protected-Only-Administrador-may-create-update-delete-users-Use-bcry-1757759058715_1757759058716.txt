@@ -1,0 +1,42 @@
+Context:
+Add Users CRUD (JWT-protected). Only Administrador may create/update/delete users. Use bcrypt hashing. Do not expose password_hash.
+
+Change scope:
+Create/Edit ONLY:
+- app/models/user.py
+- app/routers/users.py
+- app/security/deps.py (reuse require_roles)
+- app/main.py (include router)
+
+Task:
+1) Models (app/models/user.py):
+   - Ensure SQLModel User has: id:int PK, email unique, nombre:str, role: Literal["Trabajador","Encargado","Administrador"], password_hash:str, employee_id: Optional[int]
+   - Pydantic I/O:
+     * class UserBase(SQLModel): email: EmailStr; nombre:str; role: Literal[...] ; employee_id: Optional[int]=None
+     * class UserCreate(UserBase): password: str
+     * class UserRead(UserBase): id:int
+     * class UserUpdate(SQLModel): nombre: Optional[str]=None; role: Optional[...]=None; employee_id: Optional[int]=None; password: Optional[str]=None
+
+2) Router (app/routers/users.py):
+   - APIRouter(prefix="/api/v1/users", tags=["users"])
+   - Dependencies:
+       from app.security.deps import get_current_user, require_roles
+   - List (GET /): Admin only; returns List[UserRead]
+   - Get by id (GET /{id}): Admin only; 404 "Usuario no encontrado"
+   - Create (POST /): Admin only; check unique email; hash password (passlib CryptContext bcrypt); return UserRead; 409 on duplicate -> "El correo ya está registrado"
+   - Update (PATCH /{id}): Admin only; update fields; if password provided, hash it; 404 if not found; 409 on duplicate email
+   - Delete (DELETE /{id}): Admin only; 404 if not found; return 204
+
+3) Security:
+   - Ensure require_roles("Administrador") protects POST/PATCH/DELETE (and GETs if desired).
+   - Do NOT return password_hash in any response.
+
+4) main.py:
+   - include_router(users.router)
+
+Acceptance:
+- POST /api/v1/users creates user (201 or 200) and hashes password.
+- PATCH can change nombre/role/employee_id and optionally password.
+- Duplicate email -> 409 with Spanish message.
+- All write routes require Admin (403 otherwise).
+- Swagger shows clear bodies (no "additionalProp1").

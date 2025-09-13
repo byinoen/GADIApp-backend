@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health, employees, auth, schedules, admin_seed, tasks, dev_tools
+from app.routers import health, employees, auth, schedules, admin_seed, tasks, dev_tools, users
 from app.db import init_db
 
 app = FastAPI()
@@ -27,3 +27,4 @@ app.include_router(schedules.router)
 app.include_router(tasks.router)
 app.include_router(admin_seed.router)
 app.include_router(dev_tools.router)
+app.include_router(users.router)

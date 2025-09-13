@@ -16,12 +16,19 @@ class User(UserBase, table=True):
     password_hash: str
 
 
-class UserCreate(BaseModel):
-    email: EmailStr
-    nombre: str
-    role: RoleEnum
+class UserCreate(UserBase):
     password: str
+
+
+class UserRead(UserBase):
+    id: int
+
+
+class UserUpdate(SQLModel):
+    nombre: Optional[str] = None
+    role: Optional[RoleEnum] = None
     employee_id: Optional[int] = None
+    password: Optional[str] = None
 
 
 class UserLogin(BaseModel):
